@@ -7,6 +7,24 @@ Official code repository and computational pipeline for:
 > (Submitted 2026)  
 > **Correspondence:** Tyler Wilson (twilson@eoas.ubc.ca)
 
+## Citation
+
+**APA:**
+> Wilson, T. (2026). LSTM Glacier Counterfactuals Code (Version v1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.21879838
+
+**BibTeX**
+```bibtex
+@misc{wilson_lstm_counterfactual_2026_zenodo,
+  author = {Wilson, Tyler},
+  title = {LSTM Glacier Counterfactuals Code},
+  month = aug,
+  year = 2026,
+  copyright = {Creative Commons Attribution 4.0 International},
+  howpublished = {Zenodo},
+  doi = {https://doi.org/10.5281/zenodo.21879838}
+  }
+```
+
 ---
 
 ## Overview
