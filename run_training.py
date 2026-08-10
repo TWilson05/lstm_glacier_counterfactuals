@@ -2,7 +2,7 @@ import argparse
 import torch
 from src.dataset import load_and_preprocess_data
 from src.models import EALSTM, StandardLSTM
-from src.training import train_epoch, evaluate, BasinAveragedNSELoss
+from src.training import train_epoch, evaluate, BasinAveragedNSELoss, MaskedMSELoss
 from src.inference import predict_and_save_full_results
 from src.config import MODELS_DIR, OUTPUT_DATA_DIR
 

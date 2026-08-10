@@ -117,6 +117,35 @@ lstm_glacier_counterfactuals/
 └── setup.py                     # Local package installation setup
 ```
 
+---
+
+## Model & Experiment Configurations
+The `run_training.py` pipeline supports multiple architectures, loss functions, and input feature sets to facilitate broad experiment testing. The specific setup used in the paper was the combination of `lstm`, NSE*, and `topographic` input set.
+
+1. **Model Architectures** (`<model_type>`):
+* `lstm`: A standard Long Short-Term Memory network where static catchment attributes are concatenated with dynamic meteorological inputs at each timestep.
+* `ealstm` An Entity-Aware LSTM where static catchment attributes are explicitly separated from dynamic inputs to modulate the input gate.
+
+2. **Loss Functions**:
+* NSE* (`BasinAveragedNSELoss`): A basin-averaged Nash-Sutcliffe Efficiency loss function. This normalizes the loss across catchments to prevent high-variance basins from dominating the optimization. (Set as default in `run_training.py`)
+* MSE (`MaskedMSELoss`): A standard Mean Square Error loss function. (To use this, modify the `criterion` variable inside `run_training.py`)
+
+3. **Input Feature Configurations** (`<experiment_name>`)
+* `baseline`:
+  * Dynamic: `temp_max`, `temp_min`, `precip`
+  * Static: `glacier_pct`
+* `area`:
+  * Dynamic: `temp_max`, `temp_min`, `precip`
+  * Static: `basin_area_km2`, `glacier_pct`
+* `topographic`:
+  * Dynamic: `temp_max`, `temp_min`, `precip`
+  * Static: `basin_area_km2`, `mean_elev`, `elev_range`, `mean_slope`, `glacier_pct`
+* `phase-split`:
+  * Dynamic: `temp_max`, `temp_min`, `rain`, `snow`
+  * Static: `basin_area_km2`, `mean_elev`, `elev_range`, `mean_slope`, `glacier_pct`
+
+---
+
 ## High Performance Compute Setup (UBC ARC Sockeye)
 To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following steps can be followed to set up this project on Sockeye:
 
@@ -154,7 +183,7 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
    sed -i 's/\r$//' job.sh
    ```
 6. **Submit the Job**
-   The submit script automatically handles directory setup, secrets injection, and SLURM submission.
+   The submit script automatically handles directory setup, secrets injection, and SLURM submission. You must provide the experiment name and model type as command-line arguments. 
    ```
    chmod +x hpc/submit.sh
    ./hpc/submit.sh
@@ -188,14 +217,6 @@ pip install -r postprocessing_requirements.txt
 Execute the code blocks in `notebooks/02_paper_figures.ipynb`. This notebook processes the downloaded prediction arrays and reproduces all figures and performance summary tables from the manuscript.
 
 ---
-
-## Model & Experiment Configurations
-TODO: tidy up.
-You can choose between LSTM and EA-LSTM, NSE* loss and RMSE loss, and 4 different setups of input features.
-* Baseline
-* Area
-* Topographic: name inputs here...
-* Phase-split
 
 ## Funding & Acknowledgements
 * **Funding** This research was supported by a Canada Graduate Scholarship – Master's (CGS M) from the Natural Sciences and Engineering Research Council of Canada (NSERC) awarded to Tyler Wilson.
