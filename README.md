@@ -53,11 +53,7 @@ Before training on the cluster, it is recommended for data to be downloaded and 
 ```text
 lstm_glacier_counterfactuals/
 ├── data/
-│   ├── output/
-│   │   ├── area/
-│   │   ├── baseline/
-│   │   ├── phase_split/
-│   │   └── topographic/
+│   ├── output/*
 │   ├── processed/
 │   │   ├── climate/
 │   │   │   ├── daily_fraction_below_zero.csv
@@ -88,7 +84,7 @@ lstm_glacier_counterfactuals/
 │   ├── job.sh                   # Main SLURM execution script
 │   ├── setup_env.sh             # Conda environment setup for PyTorch/CUDA
 │   └── submit.sh                # Job submission wrapper
-├── models/
+├── models/*
 ├── local_postprocessing/        # Local evaluation & SOM clustering utilities
 │   ├── clean_local.sh           # Cleanup script for local cached evaluation runs
 │   └── setup_local.sh           # Setup script for local analysis environment
@@ -130,7 +126,7 @@ The `run_training.py` pipeline supports multiple architectures, loss functions, 
 * NSE* (`BasinAveragedNSELoss`): A basin-averaged Nash-Sutcliffe Efficiency loss function. This normalizes the loss across catchments to prevent high-variance basins from dominating the optimization. (Set as default in `run_training.py`)
 * MSE (`MaskedMSELoss`): A standard Mean Square Error loss function. (To use this, modify the `criterion` variable inside `run_training.py`)
 
-3. **Input Feature Configurations** (`<experiment_name>`)
+3. **Input Feature Configurations** (`<exp_name>`)
 * `baseline`:
   * Dynamic: `temp_max`, `temp_min`, `precip`
   * Static: `glacier_pct`
@@ -151,7 +147,7 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
 
 1. **Create a Secrets File**
    Create a file named `secrets.env` in the project root containing your email and Sockeye allocation code.
-   ```
+   ```text
    # secrets.env
    EMAIL="<your email>"
    ACCOUNT="<alloc-code>-gpu"
@@ -164,7 +160,7 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
    Note that to connect to Sockeye you must be connected to a UBC secure network or connect to [UBC myVPN](https://it.ubc.ca/services/email-voice-internet/myvpn/setup-documents)
 4. **Connect and Extract**
    SSH into Sockeye and unzip the project.
-   ```
+   ```bash
    ssh <cwl>@sockeye.arc.ubc.ca
    cd /scratch/<alloc-code>
    unzip project_upload.zip -d lstm_glacier_counterfactuals
@@ -172,36 +168,40 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
    ```
 5. **Setup Environment (One-time)**
    This script loads the required Python modules, creates a virtual environment, and installs dependencies.
-   ```
+   ```bash
    chmod +x hpc/setup_env.sh
    ./hpc/setup_env.sh
    ```
    *Troubleshooting*: If you recieve an error, try running this first and then trying again:
-   ```
+   ```bash
    sed -i 's/\r$//' setup_env.sh
    sed -i 's/\r$//' submit.sh
    sed -i 's/\r$//' job.sh
    ```
 6. **Submit the Job**
    The submit script automatically handles directory setup, secrets injection, and SLURM submission. You must provide the experiment name and model type as command-line arguments. 
-   ```
+   ```bash
    chmod +x hpc/submit.sh
-   ./hpc/submit.sh
+   ./hpc/submit.sh <experiment_name> <model_type>
    ```
+   (Example: `./hpc/submit.sh topographic lstm`) 
 
 ### Monitoring and Results
 * **Check Status:** Run `squeue -u <cwl>` to see your job in the queue.
 * **View Logs:** Once running, track progress live: `tail -f logs/train_*.out`
 * **Retrieve Results:**
-   Once the job status has changed to `COMPLETED`, you can download the trained model and the factual/counterfactual predictions to your local machine.
+   Once the job status has changed to `COMPLETED`, you can download the trained model and the factual/counterfactual predictions to your local machine. Saved files can be found at the following locations, with `member_id` corresponding to each of the 10 ensemble runs (0-9):
+   * Trained models: `models/<exp_name>_<model_type>_member_<member_id>.pth` (*Example:* `topographic_lstm_member_0.pth`)
+   * Factual predictions: `data/output/<exp_name>_<model_type>_preds_member_<member_id>.csv` (*Example:* `topographic_lstm_preds_member_0.csv`)
+   * Counterfactual predictions: `data/output/<exp_name>_<model_type>_preds_noglacier_member_<member_id>.csv` (*Example:* `topographic_lstm_preds_noglacier_member_0.csv`)
    The following code will download the necessary files:
    ```bash
    # download the factual and counterfactual predictions
-   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/data/output/test_set_predictions.csv ./data/output/
+   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/data/output/* ./data/output/
    ```
    ```bash
    # download saved model
-   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/models/ ./models/
+   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/models/* ./models/
    ```
 
 ---
