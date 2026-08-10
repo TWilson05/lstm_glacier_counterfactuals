@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- SLURM CONFIGURATION ---
-#SBATCH --job-name=ealstm_ensemble             # Job name (shows up in queue)
+#SBATCH --job-name=lstm_counterfactuals        # Job name (shows up in queue)
 #SBATCH --time=48:00:00                        # Max run time (HH:MM:SS)
 #SBATCH --nodes=1                              # We only need 1 computer node
 #SBATCH --ntasks=1                             # We run 1 main task

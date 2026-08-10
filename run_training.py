@@ -29,7 +29,7 @@ EXPERIMENT_CONFIGS = {
 def main():
     # --- 1. Command Line Arguments ---
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_type', type=str, choices=['ealstm', 'lstm'], default='ealstm', help='Which architecture to train')
+    parser.add_argument('--model_type', type=str, choices=['ealstm', 'lstm'], default='lstm', help='Which architecture to train')
     parser.add_argument("--exp_name", type=str, required=True, choices=EXPERIMENT_CONFIGS.keys(), help="Name of the experiment to run")
     parser.add_argument("--member_id", type=int, required=True, help="Ensemble member ID (0-9)")
     args = parser.parse_args()

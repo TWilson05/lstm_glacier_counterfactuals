@@ -138,8 +138,8 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
    ```
    ssh <cwl>@sockeye.arc.ubc.ca
    cd /scratch/<alloc-code>
-   unzip project_upload.zip -d ealstm_project
-   cd ealstm_project
+   unzip project_upload.zip -d lstm_glacier_counterfactuals
+   cd lstm_glacier_counterfactuals
    ```
 5. **Setup Environment (One-time)**
    This script loads the required Python modules, creates a virtual environment, and installs dependencies.
@@ -168,11 +168,11 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
    The following code will download the necessary files:
    ```bash
    # download the factual and counterfactual predictions
-   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/ealstm_project/data/output/test_set_predictions.csv ./data/output/
+   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/data/output/test_set_predictions.csv ./data/output/
    ```
    ```bash
    # download saved model
-   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/ealstm_project/models/ ./models/
+   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/models/ ./models/
    ```
 
 ---
