@@ -1,23 +1,57 @@
-# Glacier-Aware EA-LSTM Streamflow Prediction
-This repository implements an Entity-Aware LSTM (EA-LSTM) to predict daily streamflow in Western Canadian basins. It explicitly models static basin attributes—specifically glacier coverage, mean elevation, and basin area.
+# Learning Glacier Runoff from Streamflow: A Counterfactual Evaluation of Deep Hydrological Models
+
+Official code repository and computational pipeline for:
+> **Learning Glacier Runoff from Streamflow: A Counterfactual Evaluation of Deep Hydrological Models**  
+> Tyler Wilson and Valentina Radić 
+> *Department of Earth, Ocean and Atmospheric Sciences, University of British Columbia*  
+> (Submitted 2026)  
+> **Correspondence:** Tyler Wilson (twilson@eoas.ubc.ca)
+
+---
+
+## Overview
+
+This repository implements a regional deep-learning framework to investigate whether glacier contributions to streamflow can be inferred directly from hydrological observations without explicit glacier physics or mass-balance training data.
+
+Using a regional Long Short-Term Memory (LSTM) network trained across 269 catchments in southwestern Canada (1980–2022), we perform a **counterfactual experiment**:
+1. **Factual Simulation ($Q_f$):** Streamflow predicted using observed meteorological forcing and actual catchment attributes (including fractional glacier cover $g$).
+2. **Counterfactual Simulation ($Q_{cf}$):** Streamflow predicted after setting fractional glacier cover to zero ($g = 0$) while holding all meteorological forcings and other topographic attributes identical.
+3. **Inferred Glacier Runoff ($Q_g$):** $Q_g = Q_f - Q_{cf}$, representing the glacier-driven streamflow component learned by the model.
+
+The code in this repository can reproduce all figures and findings in the study. All data used is publicly available. Setup instructions are given below.
+
+---
 
 ## Local Setup & Preprocessing
-Before training on the cluster, data must be downloaded and preprocessed locally.
+Before training on the cluster, it is recommended for data to be downloaded and preprocessed locally.
 
-1. **Install Dependencies**
+1. **Install Dependencies:**
    Ensure you have Python 3.10+ installed, then run:
    ```bash
    pip install -r requirements.txt
    pip install -e .
    ```
-2. **Run Preprocessing**
+2. **Run Preprocessing:**
    Run `notebooks/01_data_preprocessing.ipynb` in full.
    * Note: This notebook downloads ERA5 reanalysis data which can take a significant amount of time depending on the server queues.
    * Outcome: This generates the lightweight CSVs in `data/processed/` required for training.
 
-## File Tree
-````
-EA-LSTM-Streamflow/
+---
+
+**Files of particular note:**
+* `data/processed/combined_streamflow.csv`: this is the ground-truth streamflow data in units of $m^3/s$. Note that there will be some gaps in this data.
+* `data/processed/glacier_volume_change_x.csv`: this is the monthly changes in mass balance from the mass balance model aggregated for each station. Units are in millions of cubic meters of water (MCM). The three files are different outputs of the mass balance model. `x=1` is the best performing model. Using all three models allows for an estimate of model confidence.
+* `data/processed/static_attributes.csv`: this is the values of static variables for each station. Area is in units of $\mathrm{km}^2$, elevation is in $\mathrm{m}$, and slope is unitless.
+* `data/processed/climate/`: this folder contains CSV files of the dynamic variables, structured in the same way as `combined_streamflow.csv`. Temperature has units of degrees celcius while precipitation variables are in units of millimeters averaged over the basin.
+* `data/output` contains daily predictions for each model, structured in the same manner as `combined_streamflow` except using units of millimeters over the basin area.
+* `src/config.py` is used to consistantly reference common files and directories. Include this in your import statment when developing code or performing analysis. `from src.config import ___`.
+
+---
+
+## Repository Structure
+
+```text
+lstm_glacier_counterfactuals/
 ├── data/
 │   ├── output/
 │   │   ├── area/
@@ -50,47 +84,38 @@ EA-LSTM-Streamflow/
 │       ├── RGI-western-canada/
 │       ├── spatial_bounds.csv
 │       └── station_metadata.csv
-├── hpc/
-│   ├── job.sh
-│   ├── setup_env.sh
-│   └── submit.sh
+├── hpc/                         # HPC (UBC Sockeye) submission & environment scripts
+│   ├── job.sh                   # Main SLURM execution script
+│   ├── setup_env.sh             # Conda environment setup for PyTorch/CUDA
+│   └── submit.sh                # Job submission wrapper
 ├── models/
-│   ├── area/
-│   ├── baseline/
-│   ├── phase-split/
-│   └── topographic/
-├── notebooks/
-│   ├── 01_data_preprocessing.ipynb
-│   ├── 02_data_postprocessing.ipynb
-│   └── EXP_* (experimental analysis notebooks)
-├── src/
+├── local_postprocessing/        # Local evaluation & SOM clustering utilities
+│   ├── clean_local.sh           # Cleanup script for local cached evaluation runs
+│   └── setup_local.sh           # Setup script for local analysis environment
+├── notebooks/                   # Jupyter notebooks for data processing & paper figures
+│   ├── 01_data_preprocessing.ipynb # Gauge filtering, ERA5-Land extraction, & attribute building
+│   └── 02_paper_figures.ipynb      # Main manuscript figure generation (Figs 1-7)
+├── src/                         # Core Python package
 │   ├── __init__.py
-│   ├── climate.py
-│   ├── config.py
-│   ├── data_ingestion.py
-│   ├── data_utils.py
-│   ├── dataset.py
-│   ├── inference.py
-│   ├── models.py
-│   ├── processing.py
-│   ├── spatial_utils.py
-│   └── training.py
+│   ├── climate.py               # ERA5-Land climate processing routines
+│   ├── config.py                # Central experiment configuration & default paths
+│   ├── data_ingestion.py        # HYDAT hydrometric data readers
+│   ├── data_utils.py            # Normalization, sequence building, & masking utilities
+│   ├── dataset.py               # PyTorch Dataset classes for sequence windows
+│   ├── inference.py             # Factual and Counterfactual (g=0) prediction engine
+│   ├── models.py                # Regional LSTM architecture definitions
+│   ├── processing.py            # Data pipeline orchestration
+│   ├── spatial_utils.py         # Geospatial intersections & polygon operations
+│   └── training.py              # Loss functions (Masked NSE*) and training loop
 ├── .gitignore
-├── bundle_project.py
-├── postprocessing_requirements.txt
+├── bundle_project.py            # Utility to bundle project dependencies for HPC transfer
+├── postprocessing_requirements.txt # Dependencies for local analysis & figure generation
+├── requirements.txt             # Primary PyTorch training dependencies for HPC
 ├── README.md
-├── requirements.txt
-├── run_training.py
+├── run_training.py              # Main CLI entry point for training and evaluation
 ├── secrets.env
-└── setup.py
-````
-**Files of particular note:**
-* `data/processed/combined_streamflow.csv`: this is the ground-truth streamflow data in units of $m^3/s$. Note that there will be some gaps in this data.
-* `data/processed/glacier_volume_change_x.csv`: this is the monthly changes in mass balance from the mass balance model aggregated for each station. Units are in millions of cubic meters of water (MCM). The three files are different outputs of the mass balance model. `x=1` is the best performing model. Using all three models allows for uncertainty quantification.
-* `data/processed/static_attributes.csv`: this is the values of static variables for each station. Area is in units of $km^2$, elevation is in $m$, and slope is unitless.
-* `data/processed/climate/`: this folder contains CSV files of the dynamic variables, structured in the same way as `combined_streamflow.csv`. Temperature has units of degrees celcius while precipitation variables are in units of millimeters averaged over the basin.
-* `data/output` contains daily predictions for each model, structured in the same manner as `combined_streamflow` except using units of millimeters over the basin area.
-* `src/config.py` is used to consistantly reference common files and directories. Include this in your import statment when developing code or performing analysis. `from src.config import ___`.
+└── setup.py                     # Local package installation setup
+```
 
 ## High Performance Compute Setup (UBC ARC Sockeye)
 To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following steps can be followed to set up this project on Sockeye:
@@ -139,13 +164,39 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
 * **Check Status:** Run `squeue -u <cwl>` to see your job in the queue.
 * **View Logs:** Once running, track progress live: `tail -f logs/train_*.out`
 * **Retrieve Results:**
-   Once the job status has changed to `COMPLETED`, you can download the trained model and predictions to your local machine.
-   The following code will download the necessary files produced.
+   Once the job status has changed to `COMPLETED`, you can download the trained model and the factual/counterfactual predictions to your local machine.
+   The following code will download the necessary files:
    ```bash
-   # download test set predictions
-   scp <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/ealstm_project/data/output/test_set_predictions.csv ./data/output/
+   # download the factual and counterfactual predictions
+   scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/ealstm_project/data/output/test_set_predictions.csv ./data/output/
    ```
-   ```
+   ```bash
    # download saved model
    scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/ealstm_project/models/ ./models/
    ```
+
+---
+
+## Postprocessing & Figure Generation
+After retrieving the factual and counterfactual predictions from the HPC cluster, use the local postprocessing environment to generate the manuscript figures.
+1. **Set up the local environment:** Execute the local setup script and install the dependencies required for analysis and plotting.
+```bash
+bash local_postprocessing/setup_local.sh
+pip install -r postprocessing_requirements.txt
+```
+2. **Run the figure notebook:**
+Execute the code blocks in `notebooks/02_paper_figures.ipynb`. This notebook processes the downloaded prediction arrays and reproduces all figures and performance summary tables from the manuscript.
+
+---
+
+## Model & Experiment Configurations
+TODO: tidy up.
+You can choose between LSTM and EA-LSTM, NSE* loss and RMSE loss, and 4 different setups of input features.
+* Baseline
+* Area
+* Topographic: name inputs here...
+* Phase-split
+
+## Funding & Acknowledgements
+* **Funding** This research was supported by a Canada Graduate Scholarship – Master's (CGS M) from the Natural Sciences and Engineering Research Council of Canada (NSERC) awarded to Tyler Wilson.
+* **Compute** Computational resources and systems administration were provided by Advanced Research Computing at the University of British Columbia (UBC ARC Sockeye).
