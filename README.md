@@ -53,44 +53,43 @@ Before training on the cluster, it is recommended for data to be downloaded and 
 ```text
 lstm_glacier_counterfactuals/
 ├── data/
-│   ├── output/*
-│   ├── processed/
-│   │   ├── climate/
-│   │   │   ├── daily_fraction_below_zero.csv
-│   │   │   ├── daily_precipitation.csv
-│   │   │   ├── daily_rainfall.csv
-│   │   │   ├── daily_snowfall.csv
-│   │   │   ├── daily_temp_max.csv
-│   │   │   └── daily_temp_min.csv
-│   │   ├── combined_streamflow.csv
-│   │   ├── glacier_volume_change_1.csv
-│   │   ├── glacier_volume_change_2.csv
-│   │   ├── glacier_volume_change_3.csv
-│   │   └── static_attributes.csv
-│   └── raw/
-│       ├── dem_data/
-│       ├── drainage_areas/
-│       ├── era5/
-│       │   ├── precipitation/
-│       │   └── temperature/
-│       ├── mass_balance/
+│   ├── output/                  # model predictions of streamflow
+│   ├── processed/               # data processed for use in model training and analysis
+│   │   ├── climate/                    # daily climate data for each basin
+│   │   │   ├── daily_precipitation.csv # daily precipitation by basin
+│   │   │   ├── daily_rainfall.csv      # daily rainfall by basin
+│   │   │   ├── daily_snowfall.csv      # daily snowfall by basin
+│   │   │   ├── daily_temp_max.csv      # daily max temperature by basin
+│   │   │   └── daily_temp_min.csv      # daily min temperature by basin
+│   │   ├── combined_streamflow.csv     # daily observed mean streamflow per basin
+│   │   ├── glacier_volume_change_1.csv # monthly mass balance by basin for fnn file
+│   │   ├── glacier_volume_change_2.csv # monthly mass balance by basin for fnn_cluster file
+│   │   ├── glacier_volume_change_3.csv # monthly mass balance by basin for lstm file
+│   │   └── static_attributes.csv       # static attributes for each basin
+│   └── raw/                     # raw data downloads (unmodified)
+│       ├── dem_data/            # downloaded digital elevation maps
+│       ├── drainage_areas/      # drainage area polygons
+│       ├── era5/                # temperature and precipitation data downloaded from ERA5
+│       │   ├── precipitation/   # raw hourly precipitation data
+│       │   └── temperature/     # raw hourly temperature data
+│       ├── mass_balance/        # Modeled monthly mass balance data
 │       │   ├── ts_monthly_const_area_fnn.csv
 │       │   ├── ts_monthly_const_area_fnn_cluster.csv
 │       │   └── ts_monthly_const_area_lstm.csv
-│       ├── RGI-western-canada/
-│       ├── spatial_bounds.csv
-│       └── station_metadata.csv
+│       ├── RGI-western-canada/  # RGI glacier data and polygons
+│       ├── spatial_bounds.csv   # latitude and longitude bounds used for downloads
+│       └── station_metadata.csv # raw HYDAT station metadata
 ├── hpc/                         # HPC (UBC Sockeye) submission & environment scripts
 │   ├── job.sh                   # Main SLURM execution script
 │   ├── setup_env.sh             # Conda environment setup for PyTorch/CUDA
 │   └── submit.sh                # Job submission wrapper
-├── models/*
-├── local_postprocessing/        # Local evaluation & SOM clustering utilities
+├── models/                      # Saved models
+├── local_postprocessing/        # Local setup for figures notebook
 │   ├── clean_local.sh           # Cleanup script for local cached evaluation runs
 │   └── setup_local.sh           # Setup script for local analysis environment
 ├── notebooks/                   # Jupyter notebooks for data processing & paper figures
 │   ├── 01_data_preprocessing.ipynb # Gauge filtering, ERA5-Land extraction, & attribute building
-│   └── 02_paper_figures.ipynb      # Main manuscript figure generation (Figs 1-7)
+│   └── 02_paper_figures.ipynb      # Main manuscript figure generation
 ├── src/                         # Core Python package
 │   ├── __init__.py
 │   ├── climate.py               # ERA5-Land climate processing routines
@@ -109,7 +108,7 @@ lstm_glacier_counterfactuals/
 ├── requirements.txt             # Primary PyTorch training dependencies for HPC
 ├── README.md
 ├── run_training.py              # Main CLI entry point for training and evaluation
-├── secrets.env
+├── secrets.env                  # Email and allocation code for HPC setup
 └── setup.py                     # Local package installation setup
 ```
 
