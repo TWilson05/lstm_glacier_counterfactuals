@@ -4,11 +4,3 @@ numpy
 tqdm
 # training specific requirements
 torch
-# preprocessing specific requirements
-xarray
-geopandas
-shapely
-cdsapi
-requests
-rasterio
-rasterstats

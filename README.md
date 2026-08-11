@@ -41,18 +41,39 @@ The code in this repository can reproduce all figures and findings in the study.
 ---
 
 ## Local Setup & Preprocessing
-Before training on the cluster, it is recommended for data to be downloaded and preprocessed locally.
+Before training on the cluster, it is recommended that the data be downloaded and preprocessed locally. To avoid conflicts with other projects, you should do this within an isolated Python virtual environment.
 
-1. **Install Dependencies:**
-   Ensure you have Python 3.10+ installed, then run:
+1. **Create and Activate a Virtual Environment:**
+   Ensure you have Python 3.10+ installed. Open your terminal in the project root and run:
+
+   *For Windows (Command Prompt / PowerShell):*
+   ```powershell
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+   *(Note: If PowerShell returns an "UnauthorizedAccess" or "running scripts is disabled" error, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` as an administrator or for your current user, then try activating again).*
+
+   *For macOS/Linux*
    ```bash
-   pip install -r requirements.txt
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+2. **Install Dependencies:**
+   With the environment active (you should see `(.venv)` in your terminal prompt), install the training requirements and the local package:
+
+   ```bash
+   pip install -r preprocessing_requirements.txt
    pip install -e .
    ```
-2. **Run Preprocessing:**
-   Run `notebooks/01_data_preprocessing.ipynb` in full.
-   * Note: This notebook downloads ERA5 reanalysis data which can take a significant amount of time depending on the server queues.
-   * Outcome: This generates the lightweight CSVs in `data/processed/` required for training.
+
+3. **Run Preprocessing:**
+   Launch Jupyter Notebook from your active environment:
+   ```bash
+   jupyter notebook
+   ```
+   Open and run `notebooks/01_data_preprocessing.ipynb` in full.
+   * Note: This notebook downloads ERA5 reanalysis data which can take a significant amount of time depending on the Copernicus server queues.
+   * Outcome: This generates the lightweight CSVs in `data/processed/` required for the training pipeline.
 
 ---
 

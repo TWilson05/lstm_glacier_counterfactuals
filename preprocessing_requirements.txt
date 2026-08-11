@@ -1,0 +1,13 @@
+# general requirements
+pandas
+numpy
+tqdm
+# preprocessing specific requirements
+xarray
+geopandas
+shapely
+cdsapi
+requests
+rasterio
+rasterstats
+jupyter
