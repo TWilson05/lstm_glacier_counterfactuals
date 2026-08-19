@@ -8,16 +8,6 @@ import pandas as pd
 from rasterio.merge import merge
 from src.config import PROCESSED_DATA_DIR, ERA5_PRECIP_DIR, ERA5_TEMP_DIR, ERA5_RAD_DIR, SPATIAL_BOUNDS, ELEVATION_DIR
 
-bounds = pd.read_csv(SPATIAL_BOUNDS)
-
-# Area bounds lat/lons: [North, West, South, East]
-ERA5_BOUNDS = [
-    float(bounds.loc[0, "north"]),
-    float(bounds.loc[0, "west"]),
-    float(bounds.loc[0, "south"]),
-    float(bounds.loc[0, "east"]),
-]
-
 def build_wateroffice_url(stations, start_date : int, end_date : int, parameter="flow"):
     base = "https://wateroffice.ec.gc.ca/services/daily_data/csv/inline?"
     station_params = "&".join([f"stations[]={urllib.parse.quote(s)}" for s in stations])
@@ -61,6 +51,8 @@ def fetch_streamflow_batch(stations, start_year : int, end_year : int, output_fi
     print(f"{df_wide.shape[0]} days of data saved for {df_wide.shape[1]} stations")
     return df_wide.sort_index().sort_index(axis=1)
 
+# ERA5 Data Downloading
+
 def get_cds_client():
     return cdsapi.Client()
 
@@ -68,6 +60,16 @@ def download_era5_land(variable, file_name, directory, years, months=range(1, 13
     """Downloads ERA5 land data in monthly files."""
     client = get_cds_client()
     dataset = "reanalysis-era5-land"
+
+    bounds = pd.read_csv(SPATIAL_BOUNDS)
+
+    # Area bounds lat/lons: [North, West, South, East]
+    ERA5_BOUNDS = [
+        float(bounds.loc[0, "north"]),
+        float(bounds.loc[0, "west"]),
+        float(bounds.loc[0, "south"]),
+        float(bounds.loc[0, "east"]),
+    ]
 
     for year in years:
         for month in months:
@@ -105,6 +107,8 @@ def download_era5_precipitation(years):
 
 def download_era5_solar_rad(years):
     download_era5_land("surface_solar_radiation_downwards", "era5_rad", ERA5_RAD_DIR, years)
+
+# DEM Downloading
 
 def latlon_to_tile(lat, lon, zoom):
     """Converts Lat/Lon to Web Mercator XYZ tile coordinates."""
