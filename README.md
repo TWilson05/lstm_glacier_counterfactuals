@@ -120,6 +120,7 @@ lstm_glacier_counterfactuals/
 │       ├── RGI-western-canada/  # RGI glacier data and polygons
 │       ├── spatial_bounds.csv   # latitude and longitude bounds used for downloads
 │       └── station_metadata.csv # raw HYDAT station metadata
+├── figures/                     # Manuscript figures
 ├── hpc/                         # HPC (UBC Sockeye) submission & environment scripts
 │   ├── job.sh                   # Main SLURM execution script
 │   ├── setup_env.sh             # Conda environment setup for PyTorch/CUDA

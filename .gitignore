@@ -24,6 +24,12 @@ __pycache__
 *.egg-info
 *venv
 .python-version
-*.ipynb
+*.ipynb_checkpoints
+lstm-counterfactual-postprocessing-env
+lstm-counterfactual-postprocessing-py-3-10-11
 # environment files
 *.env
+# figures
+*.pdf
+*.png
+*.pptx
