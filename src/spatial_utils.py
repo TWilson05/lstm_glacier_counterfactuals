@@ -13,7 +13,7 @@ from src.config import (
     GLACIER_SHP_PATH,
     MASS_BALANCE_FILES, 
     OUTPUT_STATIC_ATTR,
-    OUTPUT_GLACIER_VOL,
+    OUTPUT_GLACIER_VOL_FILES,
     RAW_DATA_DIR
 )
 STATION_METADATA_PATH = RAW_DATA_DIR / "station_metadata.csv"
@@ -277,7 +277,7 @@ def process_spatial_attributes(stations_list):
     )
 
     vol_changes_dict = {}
-    base_out_path = Path(OUTPUT_GLACIER_VOL)
+    base_out_path = Path(OUTPUT_GLACIER_VOL_FILES)
 
     for i, mb_file in enumerate(MASS_BALANCE_FILES, start=1):
         try:
