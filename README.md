@@ -43,6 +43,8 @@ The code in this repository can reproduce all figures and findings in the study.
 ## Local Setup & Preprocessing
 Before training on the cluster, it is recommended that the data be downloaded and preprocessed locally. To avoid conflicts with other projects, you should do this within an isolated Python virtual environment.
 
+*Note: If downloading from Zenodo, data are provided and you can skip right to the postprocessing step.*
+
 1. **Create and Activate a Virtual Environment:**
    Ensure you have Python 3.10+ installed. Open your terminal in the project root and run:
 
@@ -245,14 +247,52 @@ To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following
 ---
 
 ## Postprocessing & Figure Generation
-After retrieving the factual and counterfactual predictions from the HPC cluster, use the local postprocessing environment to generate the manuscript figures.
-1. **Set up the local environment:** Execute the local setup script and install the dependencies required for analysis and plotting.
+After retrieving the factual and counterfactual predictions from the HPC cluster (or downloading the paper results from Zenodo), use the local postprocessing environment to generate the manuscript figures.
+
+### Option 1: `venv` (Recommended for Windows)
+1. Create the virtual environment:
 ```bash
-bash local_postprocessing/setup_local.sh
+python -m venv lstm-counterfactual-postprocessing-env
+```
+2. Activate the environment:
+  * PowerShell: `.\lstm-counterfactual-postprocessing-env\Scripts\Activate.ps1`
+  * Command Prompt: `.\lstm-counterfactual-postprocessing-env\Scripts\activate.bat`
+3. Upgrade `pip` and install the required dependencies:
+```bash
+python -m pip install --upgrade pip
 pip install -r postprocessing_requirements.txt
 ```
-2. **Run the figure notebook:**
-Execute the code blocks in `notebooks/02_paper_figures.ipynb`. This notebook processes the downloaded prediction arrays and reproduces all figures and performance summary tables from the manuscript.
+4. Install `ipykernel` and register the environment:
+```bash
+pip install ipykernel
+python -m ipykernel install --user --name lstm-counterfactual-postprocessing-env --display-name "LSTM Counterfactual Postprocessing"
+```
+5. Install the local project configuration:
+```bash
+pip install -e .
+```
+
+### Option 2: Automated via `pyenv` (Recommended for macOS & Linux)
+*Prerequisite: Ensure `pyenv` and `pyenv-virtualenv` are installed on your system.*
+
+An automated bash script is provided to handle the entire lifecycle of the environment, including Python installation, environment creation, dependency installation, and kernel registration.
+
+1. Open your terminal and navigate to the local postprocessing directory:
+```bash
+cd local_postprocessing
+```
+2. Make the setup script executable:
+```bash
+chmod +x setup_local.sh
+```
+3. Run the setup script:
+```
+./setup_local.sh
+```
+*(Note: To completely remove the kernel and virtual environment from your system later, you can run `./clean_local.sh`)*
+
+### Run the figure notebook
+Once the setup is complete, open `notebooks/02_paper_figures.ipynb` and select your new environment from the kernel dropdown menu. This notebook processes the downloaded prediction arrays and reproduces all figures and performance summary tables from the manuscript.
 
 ---
 
