@@ -2,9 +2,9 @@
 set -e
 
 PYTHON_VERSION="3.10.11"
-ENV_NAME="ealstm-postprocessing-py-3-10-11"
-KERNEL_NAME="ealstm-postprocessing-py-3-10-11"
-KERNEL_DISPLAY_NAME="EA-LSTM Postprocessing (Py 3.10.11)"
+ENV_NAME="lstm-counterfactual-postprocessing-py-3-10-11"
+KERNEL_NAME="lstm-counterfactual-postprocessing-py-3-10-11"
+KERNEL_DISPLAY_NAME="LSTM Counterfactual Postprocessing (Py 3.10.11)"
 
 echo "Initializing pyenv..."
 
