@@ -277,9 +277,9 @@ def process_spatial_attributes(stations_list):
     )
 
     vol_changes_dict = {}
-    base_out_path = Path(OUTPUT_GLACIER_VOL_FILES)
 
-    for i, mb_file in enumerate(MASS_BALANCE_FILES, start=1):
+    # Pair the input mass balance files with their designated config output paths
+    for i, (mb_file, member_out_path) in enumerate(zip(MASS_BALANCE_FILES, OUTPUT_GLACIER_VOL_FILES), start=1):
         try:
             print(f"   -> Processing Member {i}: {mb_file.name}")
             mb_df = pd.read_csv(mb_file, index_col=0)
@@ -289,8 +289,7 @@ def process_spatial_attributes(stations_list):
                 vol_change = mb_df.loc[common_glaciers].T.dot(area_matrix.loc[common_glaciers])
                 vol_change.index = pd.to_datetime(vol_change.index)
                 
-                # Create unique filename (e.g., glacier_volume_change_1.csv)
-                member_out_path = base_out_path.with_name(f"{base_out_path.stem}_{i}{base_out_path.suffix}")
+                # Save directly to the pre-defined path from the config list
                 vol_change.to_csv(member_out_path)
                 
                 vol_changes_dict[i] = vol_change
