@@ -146,6 +146,7 @@ lstm_glacier_counterfactuals/
 │   └── training.py              # Loss functions (Masked NSE*) and training loop
 ├── .gitignore
 ├── bundle_project.py            # Utility to bundle project dependencies for HPC transfer
+├── preprocessing_requirements.txt  # Dependencies for local file downloading and preprocessing
 ├── postprocessing_requirements.txt # Dependencies for local analysis & figure generation
 ├── requirements.txt             # Primary PyTorch training dependencies for HPC
 ├── README.md
