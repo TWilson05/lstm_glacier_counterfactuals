@@ -241,7 +241,7 @@ To train the LSTM model, this project utilized UBC ARC Sockeye. The following st
    scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/data/output/* ./data/output/
    ```
    ```bash
-   # download saved model
+   # download saved models
    scp -r <cwl>@sockeye.arc.ubc.ca:/scratch/<alloc-code>/lstm_glacier_counterfactuals/models/* ./models/
    ```
 
