@@ -184,7 +184,7 @@ The `run_training.py` pipeline supports multiple architectures, loss functions, 
 ---
 
 ## High Performance Compute Setup (UBC ARC Sockeye)
-To train the EA-LSTM model, this project utilized UBC ARC Sockeye. The following steps can be followed to set up this project on Sockeye:
+To train the LSTM model, this project utilized UBC ARC Sockeye. The following steps can be followed to set up this project on Sockeye:
 
 1. **Create a Secrets File**
    Create a file named `secrets.env` in the project root containing your email and Sockeye allocation code.
