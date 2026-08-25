@@ -31,7 +31,7 @@ Official code repository and computational pipeline for:
 
 This repository implements a regional deep-learning framework to investigate whether glacier contributions to streamflow can be inferred directly from hydrological observations without explicit glacier physics or mass-balance training data.
 
-Using a regional Long Short-Term Memory (LSTM) network trained across 269 catchments in southwestern Canada (1980–2022), we perform a **counterfactual experiment**:
+Using a regional Long Short-Term Memory (LSTM) network trained across 269 catchments in western Canada (1980–2022), we perform a **counterfactual experiment**:
 1. **Factual Simulation ($Q_f$):** Streamflow predicted using observed meteorological forcing and actual catchment attributes (including fractional glacier cover $g$).
 2. **Counterfactual Simulation ($Q_{cf}$):** Streamflow predicted after setting fractional glacier cover to zero ($g = 0$) while holding all meteorological forcings and other topographic attributes identical.
 3. **Inferred Glacier Runoff ($Q_g$):** $Q_g = Q_f - Q_{cf}$, representing the glacier-driven streamflow component learned by the model.
