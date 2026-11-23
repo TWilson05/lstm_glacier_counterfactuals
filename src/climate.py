@@ -74,182 +74,115 @@ def compute_spatial_weights(basins_gdf, lats, lons):
     
     return weights_lookup
 
+def _read_hourly(files, names):
+    """Read UTC hours in order, rejecting gaps and overlapping files."""
+    previous = None
+    for path in sorted(files):
+        with xr.open_dataset(path, engine="netcdf4") as ds:
+            name = next((name for name in names if name in ds.data_vars), None)
+            if name is None:
+                raise ValueError(f"No expected variable {names} in {path}")
+            coord = "valid_time" if "valid_time" in ds.coords else "time"
+            times = pd.DatetimeIndex(pd.to_datetime(ds[coord].values))
+            data = ds[name].values
+        if len(times) != len(data) or times.has_duplicates or not times.is_monotonic_increasing:
+            raise ValueError(f"Invalid hourly time axis in {path}")
+        if len(times) and (not (times[1:] - times[:-1] == pd.Timedelta(hours=1)).all()
+                           or (previous is not None and times[0] - previous != pd.Timedelta(hours=1))):
+            raise ValueError(f"Missing or overlapping hours before/in {path}")
+        if len(times):
+            previous = times[-1]
+            yield times, data
+
+
+def _increments(times, cumulative, previous_time, previous_value):
+    """Convert ERA5-Land forecast accumulations (metres) to hourly amounts.
+
+    01 UTC is the first forecast step; 00 UTC is step 24 of the previous
+    forecast. The timestamp denotes the *end* of the accumulation interval.
+    """
+    result = np.full(cumulative.shape, np.nan, dtype=float)
+    for i, time in enumerate(times):
+        if time.hour == 1:
+            result[i] = cumulative[i]
+        elif previous_time is not None and time - previous_time == pd.Timedelta(hours=1):
+            result[i] = cumulative[i] - previous_value
+        previous_time, previous_value = time, cumulative[i].copy()
+    # Small negative differences can arise from GRIB packing precision.
+    result = np.maximum(result, 0)
+    return result, previous_time, previous_value
+
+
+def _weighted(data, weights_map):
+    out = {}
+    for station, weights in weights_map.items():
+        lat, lon = zip(*weights)
+        w = np.asarray(list(weights.values()))
+        pixels = data[:, lat, lon]
+        valid = np.isfinite(pixels)
+        denominator = (valid * w).sum(axis=1)
+        out[station] = np.divide(np.nansum(pixels * w, axis=1), denominator,
+                                 out=np.full(len(data), np.nan), where=denominator > 0)
+    return pd.DataFrame(out)
+
+
+def _daily(frames, operation):
+    """Combine hours before grouping; retain only complete 24-hour values."""
+    hourly = pd.concat(frames).sort_index()
+    grouped = hourly.resample("D")
+    counts = grouped.count()
+    daily = getattr(grouped, operation)()
+    return daily.where(counts == 24)
+
+
 def process_era5_files(files, weights_map, var_type):
-    """
-    Unified function for processing Hourly NC files.
-    Applies weights using vectorized NumPy advanced indexing with NaN handling.
-    """
-    # 1. Pre-compile the spatial indices for ultra-fast NumPy extraction
-    stn_meta = {}
-    for stn, w_dict in weights_map.items():
-        lat_idx = [k[0] for k in w_dict.keys()]
-        lon_idx = [k[1] for k in w_dict.keys()]
-        w_arr = np.array(list(w_dict.values()))
-        stn_meta[stn] = (lat_idx, lon_idx, w_arr)
-        
-    daily_dfs_1 = [] # Holds Precip OR Temp Min
-    daily_dfs_2 = [] # Holds Temp Max
-    
-    desc = "Precip Files" if var_type == 'precip' else "Temp Files"
-    
-    for fpath in tqdm(files, desc=desc):
-        try:
-            with xr.open_dataset(fpath, engine='netcdf4') as ds:
-                # Identify Variable
-                if var_type == 'precip':
-                    var = next((v for v in ['tp', 'total_precipitation', 'precip'] if v in ds.variables), None)
-                else:
-                    var = next((v for v in ['t2m', '2t'] if v in ds.variables), None)
-                    
-                data = ds[var].values # Shape: (time, lat, lon)
-                
-                # Extract Times & Adjust to Local (UTC - 7)
-                time_coord = 'valid_time' if 'valid_time' in ds.coords else 'time'
-                times = pd.to_datetime(ds[time_coord].values) - pd.Timedelta(hours=7)
-                
-                # Vectorized Spatial Averaging with NaN Safeguard
-                hourly_data = {}
-                for stn, (lats, lons, ws) in stn_meta.items():
-                    pixel_data = data[:, lats, lons] # Extract all pixels for this basin
-                    
-                    # --- NEW FIX: Handle NaNs (Coastlines/Water Bodies) ---
-                    if np.isnan(pixel_data).any():
-                        # Create a mask where data actually exists
-                        valid_mask = ~np.isnan(pixel_data)
-                        
-                        # Zero out weights where data is missing
-                        active_weights = ws * valid_mask 
-                        
-                        # Find the new total weight for each time step
-                        weight_sums = np.sum(active_weights, axis=1)
-                        
-                        # Prevent division by zero if an entire basin is off-shore
-                        weight_sums[weight_sums == 0] = np.nan 
-                        
-                        # Calculate the NaN-safe weighted average
-                        hourly_data[stn] = np.nansum(pixel_data * ws, axis=1) / weight_sums
-                    else:
-                        # Fast path if the basin is fully inland (no NaNs)
-                        hourly_data[stn] = np.sum(pixel_data * ws, axis=1)
-                    # --------------------------------------------------------
-                    
-                df_hourly = pd.DataFrame(hourly_data, index=times)
-                
-                # Temporal Aggregation (Resample to Daily)
-                if var_type == 'precip':
-                    # ERA5 Precip is accumulated -> Sum to get daily total, convert m to mm
-                    df_daily = df_hourly.resample('D').sum() * 1000 
-                    daily_dfs_1.append(df_daily)
-                elif var_type == 'temp':
-                    # ERA5 Temp -> Min/Max, convert Kelvin to Celsius
-                    df_min = df_hourly.resample('D').min() - 273.15 
-                    df_max = df_hourly.resample('D').max() - 273.15
-                    daily_dfs_1.append(df_min)
-                    daily_dfs_2.append(df_max)
-                    
-        except Exception as e:
-            print(f"❌ Error processing {fpath.name}: {e}")
+    """Produce fixed UTC-7 daily basin averages from ERA5-Land UTC hours."""
+    if var_type not in ("precip", "temp"):
+        raise ValueError(f"Unknown variable type: {var_type}")
+    names = ["tp", "total_precipitation", "precip"] if var_type == "precip" else ["t2m", "2t", "2m_temperature"]
+    frames = []
+    previous_time = previous_value = None
+    for times, data in tqdm(_read_hourly(files, names), desc=f"{var_type} files"):
+        if var_type == "precip":
+            data, previous_time, previous_value = _increments(times, data, previous_time, previous_value)
+        frame = _weighted(data, weights_map)
+        # Precipitation belongs to the hour ending at its valid time; temperature
+        # is instantaneous and belongs to the hour beginning at its valid time.
+        frame.index = times - pd.Timedelta(hours=7 + (var_type == "precip"))
+        frames.append(frame)
+    if not frames:
+        raise ValueError(f"No {var_type} files supplied")
+    if var_type == "precip":
+        return _daily(frames, "sum") * 1000
+    return _daily(frames, "min") - 273.15, _daily(frames, "max") - 273.15
 
-    # Combine all months and drop any duplicate border days
-    if var_type == 'precip':
-        df_final = pd.concat(daily_dfs_1).sort_index()
-        return df_final[~df_final.index.duplicated(keep='first')]
-    else:
-        df_min_final = pd.concat(daily_dfs_1).sort_index()
-        df_max_final = pd.concat(daily_dfs_2).sort_index()
-        return (
-            df_min_final[~df_min_final.index.duplicated(keep='first')],
-            df_max_final[~df_max_final.index.duplicated(keep='first')]
-        )
-    
+
 def process_snow_rain_files(precip_files, temp_files, weights_map):
-    """
-    Processes Precip and Temp files simultaneously to split precipitation into 
-    Rain and Snow at the hourly grid-cell level, and computes the fraction of 
-    the basin below 0°C.
-    """
-    stn_meta = {}
-    for stn, w_dict in weights_map.items():
-        lat_idx = [k[0] for k in w_dict.keys()]
-        lon_idx = [k[1] for k in w_dict.keys()]
-        w_arr = np.array(list(w_dict.values()))
-        stn_meta[stn] = (lat_idx, lon_idx, w_arr)
-        
-    daily_snow_dfs = []
-    daily_rain_dfs = []
-    daily_frac_dfs = []
-    
-    # Process paired files (assuming they are perfectly sorted by month/year)
-    for p_file, t_file in tqdm(zip(precip_files, temp_files), total=len(precip_files), desc="Snow/Rain/Frac Split"):
-        try:
-            with xr.open_dataset(p_file, engine='netcdf4') as dp, xr.open_dataset(t_file, engine='netcdf4') as dt:
-                p_var = next((v for v in ['tp', 'total_precipitation', 'precip'] if v in dp.variables), None)
-                t_var = next((v for v in ['t2m', '2t'] if v in dt.variables), None)
-                
-                p_data = dp[p_var].values 
-                t_data = dt[t_var].values 
-                
-                time_coord = 'valid_time' if 'valid_time' in dp.coords else 'time'
-                times = pd.to_datetime(dp[time_coord].values) - pd.Timedelta(hours=7)
-                
-                hourly_snow = {}
-                hourly_rain = {}
-                hourly_frac = {}
-                
-                for stn, (lats, lons, ws) in stn_meta.items():
-                    p_pixel = p_data[:, lats, lons]
-                    t_pixel = t_data[:, lats, lons]
-                    
-                    # Create boolean mask for Snow (Temp < 0°C / 273.15K)
-                    is_snow = t_pixel < 273.15
-                    
-                    # Split the precipitation array
-                    snow_pixel = np.where(is_snow, p_pixel, 0.0)
-                    rain_pixel = np.where(~is_snow, p_pixel, 0.0)
-                    
-                    # NaN Safeguard (Coastlines)
-                    if np.isnan(p_pixel).any() or np.isnan(t_pixel).any():
-                        valid_mask = ~np.isnan(p_pixel) & ~np.isnan(t_pixel)
-                        active_weights = ws * valid_mask 
-                        weight_sums = np.sum(active_weights, axis=1)
-                        weight_sums[weight_sums == 0] = np.nan 
-                        
-                        hourly_snow[stn] = np.nansum(snow_pixel * ws, axis=1) / weight_sums
-                        hourly_rain[stn] = np.nansum(rain_pixel * ws, axis=1) / weight_sums
-                        
-                        # Fraction below zero (sum of valid active weights where temp < 0)
-                        hourly_frac[stn] = np.nansum(is_snow * active_weights, axis=1) / weight_sums
-                    else:
-                        hourly_snow[stn] = np.sum(snow_pixel * ws, axis=1)
-                        hourly_rain[stn] = np.sum(rain_pixel * ws, axis=1)
-                        
-                        # Fraction below zero (sum of weights where temp < 0)
-                        hourly_frac[stn] = np.sum(is_snow * ws, axis=1)
-                        
-                # Resample to Daily
-                # Precip is accumulated -> sum(), convert to mm
-                df_snow = pd.DataFrame(hourly_snow, index=times).resample('D').sum() * 1000
-                df_rain = pd.DataFrame(hourly_rain, index=times).resample('D').sum() * 1000
-                
-                # Fraction is an area -> mean() across the 24 hours
-                df_frac = pd.DataFrame(hourly_frac, index=times).resample('D').mean()
-                
-                daily_snow_dfs.append(df_snow)
-                daily_rain_dfs.append(df_rain)
-                daily_frac_dfs.append(df_frac)
-                
-        except Exception as e:
-            print(f"❌ Error processing {p_file.name} / {t_file.name}: {e}")
-
-    df_snow_final = pd.concat(daily_snow_dfs).sort_index()
-    df_rain_final = pd.concat(daily_rain_dfs).sort_index()
-    df_frac_final = pd.concat(daily_frac_dfs).sort_index()
-    
-    return (
-        df_snow_final[~df_snow_final.index.duplicated(keep='first')],
-        df_rain_final[~df_rain_final.index.duplicated(keep='first')],
-        df_frac_final[~df_frac_final.index.duplicated(keep='first')]
-    )
+    """Split hourly precipitation using temperature at the interval end."""
+    precip = _read_hourly(precip_files, ["tp", "total_precipitation", "precip"])
+    temp = _read_hourly(temp_files, ["t2m", "2t", "2m_temperature"])
+    from itertools import zip_longest
+    snow_frames, rain_frames, frac_frames = [], [], []
+    previous_time = previous_value = None
+    for p_chunk, t_chunk in tqdm(zip_longest(precip, temp), desc="Snow/rain files"):
+        if p_chunk is None or t_chunk is None:
+            raise ValueError("Precipitation and temperature file coverage differs")
+        times, cumulative = p_chunk
+        t_times, temperature = t_chunk
+        if not times.equals(t_times) or cumulative.shape != temperature.shape:
+            raise ValueError("Precipitation and temperature time axes or grids differ")
+        amounts, previous_time, previous_value = _increments(times, cumulative, previous_time, previous_value)
+        valid = np.isfinite(amounts) & np.isfinite(temperature)
+        snow = np.where(valid, np.where(temperature < 273.15, amounts, 0), np.nan)
+        rain = np.where(valid, np.where(temperature >= 273.15, amounts, 0), np.nan)
+        fraction = np.where(np.isfinite(temperature), (temperature < 273.15).astype(float), np.nan)
+        for data, frames, offset in ((snow, snow_frames, 8), (rain, rain_frames, 8), (fraction, frac_frames, 7)):
+            frame = _weighted(data, weights_map)
+            frame.index = times - pd.Timedelta(hours=offset)
+            frames.append(frame)
+    if not snow_frames:
+        raise ValueError("No precipitation and temperature files supplied")
+    return _daily(snow_frames, "sum") * 1000, _daily(rain_frames, "sum") * 1000, _daily(frac_frames, "mean")
 
 
 def process_era5_basin_data(basin_gpkg_list, stations_list, split_snow=True):
