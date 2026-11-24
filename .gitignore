@@ -33,4 +33,5 @@ lstm-counterfactual-postprocessing-py-3-10-11
 *.pdf
 *.png
 *.pptx
+*.tiff
 analysis
