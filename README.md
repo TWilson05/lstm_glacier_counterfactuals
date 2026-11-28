@@ -301,3 +301,14 @@ Once the setup is complete, open `notebooks/02_paper_figures.ipynb` and select y
 ## Funding & Acknowledgements
 * **Funding** This research was supported by a Canada Graduate Scholarship â€“ Master's (CGS M) from the Natural Sciences and Engineering Research Council of Canada (NSERC) awarded to Tyler Wilson.
 * **Compute** Computational resources and systems administration were provided by Advanced Research Computing at the University of British Columbia (UBC ARC Sockeye).
+### Partial glacier removal experiment
+
+With the processed data, saved `<exp_name>_scalers.json`, and trained member checkpoints in place, submit the 10-member inference array from the project root:
+
+```bash
+bash hpc/submit_partial_glacier.sh topographic lstm
+```
+
+This uses the existing Sockeye environment and `secrets.env`. The project bundler includes the new inference and HPC scripts but **does not include trained models or scalers**: transfer the required files in `models/` separately if they are not already on the cluster. For a single member locally or in an interactive job, run `python -m src.partial_glacier_inference --exp_name topographic --model_type lstm --member_id 0`.
+
+Each member produces 11 CSVs in `data/output/partial_glacier_removal/`, named `<experiment>_<model>_removal_<000–100>_member_<id>.csv`. Rows are dates and columns are glacierized stations (`glacier_pct > 0`); values are predicted runoff in mm/day. Removal is a fraction of each station's original glacier cover: 000 is factual and 100 sets glacier cover to zero. Other inputs and the saved normalization are unchanged. As in the existing inference, dates cover the configured data years after the initial 365-day lookback; the first 365 input days cannot be predicted.
